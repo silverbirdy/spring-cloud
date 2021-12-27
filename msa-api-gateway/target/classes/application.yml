@@ -1,0 +1,99 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: api-gateway-service
+#  rabbitmq:
+#    host: 127.0.0.1
+#    port: 5672
+#    username: guest
+#    password: guest
+  cloud:
+    gateway:
+      routes:
+#        - id: user-service
+#          uri: lb://USER-SERVICE
+#          predicates:
+#            - Path=/user-service/**
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/login
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=COOKIE
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/users
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=COOKIE
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/**
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=COOKIE
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+            - AuthorizationHeaderFilter
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/actuator/**
+            - Method=GET,POST
+          filters:
+            - RemoveRequestHeader=COOKIE
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+        - id: first-service
+          uri: lb://MY-FIRST-SERVICE
+          predicates:
+            - Path=/first-service/**
+          filters:
+            - CustomFilter
+            - AddRequestHeader=first-request, first-request-header2
+            - AddResponseHeader=first-response, first-response-header2
+        - id: second-service
+          uri: lb://MY-SECOND-SERVICE
+          predicates:
+            - Path=/second-service/**
+          filters:
+            - CustomFilter
+            - name: Logging2Filter
+              args:
+                baseMessage: Hi, there
+                preLogger: true
+                postLogger: true
+            - name: LoggingFilter
+              args:
+                baseMessage: Hi, there
+                preLogger: true
+                postLogger: true
+            - AddRequestHeader=second-request, second-request-header2
+            - AddResponseHeader=second-response, second-response-header2
+      default-filters:
+        - name: GlobalFilter
+          args:
+            baseMessage: Stpring Cloud Gateway Global Filter
+            preLogger: true
+            postLogger: true
+
+eureka:
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    defaultZone: http://localhost:8761/eureka
+
+management:
+  endpoint:
+    web:
+      exposure:
+        include: refresh, health, beans, httptrace #busrefresh
+
+token:
+  expiration_time: 86400000
+  secret: user_token
